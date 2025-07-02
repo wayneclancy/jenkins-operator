@@ -39,13 +39,13 @@
   <label for="image">Docker Image:</label>
   <input type="text" id="image" name="image" value="jenkins/jenkins:2.504.3-lts" required>
 
-  <label for="cluster">Cluster Path Prefix (e.g. /mycluster):</label>
-  <input type="text" id="cluster" name="cluster" value="/mycluster" required>
+  <label for="cluster">Cluster Path Prefix (e.g. /example):</label>
+  <input type="text" id="cluster" name="cluster" value="/example" required>
 
   <label for="jcasc">JCasC YAML:</label>
   <textarea id="jcasc" name="jcasc" rows="20">
 jenkins:
-  systemMessage: "Managed by Django UI"
+  systemMessage: "Managed by Jenkins UI"
   securityRealm:
     local:
       allowsSignup: false
