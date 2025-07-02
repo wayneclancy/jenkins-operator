@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Jenkins Instance Details</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 2rem;
+            background: #f7f7f7;
+        }
+        h1 {
+            margin-bottom: 0.5rem;
+        }
+        .meta {
+            background: white;
+            padding: 1rem;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 1rem;
+            overflow-x: auto;
+        }
+        a {
+            text-decoration: none;
+            color: #007bff;
+        }
+        .back {
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back">&larr; Back to list</a>
+    <h1>Jenkins: {{ instance.metadata.name }}</h1>
+
+    <div class="meta">
+        <h3>Metadata</h3>
+        <p><strong>Namespace:</strong> {{ instance.metadata.namespace }}</p>
+        <p><strong>Created:</strong> {{ instance.metadata.creationTimestamp }}</p>
+        <p><strong>UID:</strong> {{ instance.metadata.uid }}</p>
+        <p><strong>Labels:</strong></p>
+        <pre>{{ instance.metadata.labels|default:"{}" }}</pre>
+
+        <h3>Spec</h3>
+        <pre>{{ instance.spec|safe }}</pre>
+    </div>
+</body>
+</html>
+
