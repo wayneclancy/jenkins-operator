@@ -77,7 +77,9 @@
                     <a href="{% url 'view' instance.metadata.name %}">View</a>
                     <a href="{% url 'edit' instance.metadata.name %}">Edit</a>
                     <a href="{% url 'restart' instance.metadata.name %}">Restart</a>
-                    <a href="{% url 'delete' instance.metadata.name %}" class="delete">Delete</a>
+                    <a href="{% url 'delete' instance.metadata.name %}" class="delete"
+                    onclick="return confirm('Are you sure you want to delete {{ instance.metadata.name }}?');">Delete</a>
+
                 </td>
             </tr>
             {% empty %}

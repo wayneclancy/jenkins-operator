@@ -24,10 +24,12 @@ load_kube_config()
 
 v1 = client.CustomObjectsApi()
 corev1 = client.CoreV1Api()
+networking = client.NetworkingV1Api()
 NAMESPACE = os.getenv("JENKINS_NAMESPACE", "jenkins")
 CRD_GROUP = "jenkins.io"
 CRD_VERSION = "v1alpha2"
 CRD_PLURAL = "jenkins"
+DEFAULT_DOMAIN = os.getenv("JENKINS_DEFAULT_DOMAIN", "domain.com")
 
 # Show all Jenkins instances and their status
 def home(request):
@@ -43,7 +45,7 @@ def home(request):
         try:
             pod_list = corev1.list_namespaced_pod(
                 namespace=NAMESPACE,
-                label_selector=f"app.kubernetes.io/instance={name}"
+                label_selector=f"jenkins-cr={name}"
             )
             pod = pod_list.items[0]
             inst["status"] = pod.status.phase
@@ -59,6 +61,7 @@ def create_jenkins(request):
         name = request.POST.get("name", "example")
         image = request.POST.get("image", "jenkins/jenkins:lts")
         jcasc = request.POST.get("jcasc", "")
+        domain = request.POST.get("domain", DEFAULT_DOMAIN)
 
         secret_name = f"{name}-jcasc-secret"
         configmap_name = f"{name}-groovy-configmap"
@@ -101,6 +104,15 @@ def create_jenkins(request):
                 },
                 "master": {
                     "disableCSRFProtection": False,
+                    "basePlugins": [
+                        {"name": "configuration-as-code", "version": "1963.v24e046127a_3f"},
+                        {"name": "kubernetes", "version": ""},
+                        {"name": "workflow-job", "version": ""},
+                        {"name": "workflow-aggregator", "version": ""},
+                        {"name": "git", "version": ""},
+                        {"name": "job-dsl", "version": ""},
+                        {"name": "kubernetes-credentials-provider", "version": ""}
+                    ],
                     "containers": [
                         {
                             "name": "jenkins-master",
@@ -135,6 +147,46 @@ def create_jenkins(request):
             plural=CRD_PLURAL,
             body=body
         )
+
+
+        # Ingress creation block (no try block)
+        service_name = f"jenkins-operator-http-{name}"
+        ingress = client.V1Ingress(
+            api_version="networking.k8s.io/v1",
+            kind="Ingress",
+            metadata=client.V1ObjectMeta(
+                name=f"{name}-ingress",
+                namespace=NAMESPACE,
+                labels={"jenkins-cr": name},
+                annotations={
+                    "nginx.ingress.kubernetes.io/rewrite-target": "/"
+                }
+            ),
+            spec=client.V1IngressSpec(
+                ingress_class_name="nginx",
+                rules=[
+                    client.V1IngressRule(
+                        host=domain,
+                        http=client.V1HTTPIngressRuleValue(
+                            paths=[
+                                client.V1HTTPIngressPath(
+                                    path=f"/{name}",
+                                    path_type="Prefix",
+                                    backend=client.V1IngressBackend(
+                                        service=client.V1IngressServiceBackend(
+                                            name=service_name,
+                                            port=client.V1ServiceBackendPort(number=8080)
+                                        )
+                                    )
+                                )
+                            ]
+                        )
+                    )
+                ]
+            )
+        )
+        networking.create_namespaced_ingress(namespace=NAMESPACE, body=ingress)
+        logger.info(f"Ingress {name}-ingress created for host {domain} on path /{name}")
 
         return redirect("/")
     return render(request, "create.html")
@@ -177,10 +229,53 @@ def delete_jenkins(request, name):
         plural=CRD_PLURAL,
         name=name
     )
+
+    # Clean up ConfigMaps
+    configmaps = corev1.list_namespaced_config_map(
+        namespace=NAMESPACE,
+        label_selector=f"jenkins-cr={name}"
+    ).items
+    filtered_configmaps = [s for s in configmaps if not s.metadata.name.startswith("jenkins-operator")]
+    for cm in filtered_configmaps:
+        corev1.delete_namespaced_config_map(name=cm.metadata.name, namespace=NAMESPACE)
+
+    # Clean up Secrets (filtering unwanted ones)
+    secrets = corev1.list_namespaced_secret(
+        namespace=NAMESPACE,
+        label_selector=f"jenkins-cr={name}"
+    ).items
+    filtered_secrets = [s for s in secrets if not s.metadata.name.startswith("jenkins-operator")]
+    for secret in filtered_secrets:
+        corev1.delete_namespaced_secret(name=secret.metadata.name, namespace=NAMESPACE)
+
+    # Clean up Ingress
+    try:
+        networking.delete_namespaced_ingress(name=f"{name}-ingress", namespace=NAMESPACE)
+    except Exception as e:
+        logger.warning(f"Ingress deletion failed or not found: {e}")
+
     return redirect("/")
+
+
+def find_service_by_label(name):
+    try:
+        services = corev1.list_namespaced_service(
+            namespace=NAMESPACE,
+            label_selector=f"jenkins-cr={name}"
+        )
+        if services.items:
+            return services.items[0].metadata.name
+        else:
+            logger.warning(f"No service found with label jenkins-cr={name}")
+            return None
+    except Exception as e:
+        logger.error(f"Error fetching service for {name}: {e}")
+        return None
 
 def restart_jenkins(request, name):
     logger.debug(f"Attempting restart of Jenkins instance: {name}")
+
+    # Patch the CR with restart annotation (optional)
     patch = {
         "metadata": {
             "annotations": {
@@ -188,8 +283,9 @@ def restart_jenkins(request, name):
             }
         }
     }
+
     try:
-        response = v1.patch_namespaced_custom_object(
+        v1.patch_namespaced_custom_object(
             group=CRD_GROUP,
             version=CRD_VERSION,
             namespace=NAMESPACE,
@@ -197,9 +293,21 @@ def restart_jenkins(request, name):
             name=name,
             body=patch
         )
-        logger.debug(f"Restart patch applied successfully: {response}")
+        logger.debug(f"Restart annotation applied to Jenkins {name}.")
     except Exception as e:
         logger.error(f"Failed to patch Jenkins for restart: {e}")
-        return render(request, "error.html", {"message": f"Restart failed for {name}: {str(e)}"})
-    
+
+    # Attempt to delete the pod (forces restart)
+    try:
+        pod_list = corev1.list_namespaced_pod(
+            namespace=NAMESPACE,
+            label_selector=f"jenkins-cr={name}"
+        )
+        for pod in pod_list.items:
+            pod_name = pod.metadata.name
+            corev1.delete_namespaced_pod(name=pod_name, namespace=NAMESPACE)
+            logger.debug(f"Deleted pod {pod_name} to force restart.")
+    except Exception as e:
+        logger.error(f"Failed to delete pod for Jenkins {name}: {e}")
+
     return redirect("/")
