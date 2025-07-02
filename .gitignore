@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg
+*.egg-info/
+dist/
+build/
+*.pyo
+
+# Django stuff:
+*.log
+*.pot
+*.pyc
+*.sqlite3
+db.sqlite3
+*.mo
+
+# Django static files
+/staticfiles/
+/media/
+/static/
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# Environment
+.env
+.venv/
+venv/
+ENV/
+env/
+*.env
+
+# macOS
+.DS_Store
+
+# Pip
+pip-log.txt
+
+# Coverage reports
+htmlcov/
+.coverage
+.tox/
+.nox/
+.cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+
+# Unit test / coverage
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# Jenkins/Kubernetes
+k8s/*.yaml
+*.secret.yaml
+
+# Local development
+local_settings.py
+
