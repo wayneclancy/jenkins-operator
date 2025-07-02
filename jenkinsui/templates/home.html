@@ -1,0 +1,116 @@
+"""
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Jenkins Operator Manager</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jenkins-design-language/1.3.0/css/jenkins-design-language.min.css">
+  <style>
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f1f1f1; padding: 20px; }
+    table { background: white; border-collapse: collapse; width: 100%; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    th, td { padding: 12px 15px; border: 1px solid #ddd; text-align: left; }
+    th { background-color: #f7f7f7; }
+    a.button { background-color: #4b8bc1; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin-right: 8px; }
+    a.button:hover { background-color: #2e6da4; }
+  </style>
+</head>
+<body>
+  <h1>Jenkins Instances</h1>
+  <p><a class="button" href="/create/">➕ Create Jenkins Instance</a></p>
+  <table>
+    <tr><th>Name</th><th>Actions</th></tr>
+    {% for j in instances %}
+    <tr>
+      <td>{{ j.metadata.name }}</td>
+      <td>
+        <a class="button" href="/restart/{{ j.metadata.name }}/">🔄 Restart</a>
+        <a class="button" href="/delete/{{ j.metadata.name }}/" onclick="return confirm('Are you sure?')">❌ Delete</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</body>
+</html>
+"""
+
+# templates/create.html
+"""
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Create Jenkins Instance</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jenkins-design-language/1.3.0/css/jenkins-design-language.min.css">
+  <style>
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f9f9f9; padding: 30px; }
+    form { background: white; padding: 20px; border-radius: 6px; box-shadow: 0 0 10px rgba(0,0,0,0.1); max-width: 800px; margin: auto; }
+    label { display: block; margin: 12px 0 4px; font-weight: bold; }
+    input[type=text], textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    input[type=submit] {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      margin-top: 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    input[type=submit]:hover {
+      background-color: #45a049;
+    }
+    a { display: inline-block; margin-top: 20px; text-decoration: none; color: #4b8bc1; }
+  </style>
+</head>
+<body>
+<h1>Create Jenkins Instance</h1>
+<form method="post">
+  {% csrf_token %}
+  <label for="name">Name:</label>
+  <input type="text" id="name" name="name" value="example" required>
+
+  <label for="image">Docker Image:</label>
+  <input type="text" id="image" name="image" value="jenkins/jenkins:2.504.3-lts" required>
+
+  <label for="cluster">Cluster Path Prefix (e.g. /mycluster):</label>
+  <input type="text" id="cluster" name="cluster" value="/mycluster" required>
+
+  <label for="jcasc">JCasC YAML:</label>
+  <textarea id="jcasc" name="jcasc" rows="20">
+jenkins:
+  systemMessage: "Managed by Django UI"
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: admin
+          password: admin
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+  views:
+    - all:
+        name: "all"
+  primaryView: "all"
+  disableSetupWizard: true
+  noUsageStatistics: true
+  updateCenter:
+    sites: []
+  security:
+    csrf:
+      defaultCrumbIssuer:
+        excludeClientIPFromCrumb: true
+  quietPeriod: 5
+  numExecutors: 2
+  mode: NORMAL
+</textarea>
+
+  <input type="submit" value="Create">
+</form>
+<a href="/">← Back to Dashboard</a>
+</body>
+</html>
+"""
