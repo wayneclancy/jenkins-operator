@@ -121,7 +121,12 @@ def create_jenkins(request):
                             "env": [
                                 {
                                     "name": "CASC_JENKINS_CONFIG",
-                                    "value": "/var/jenkins/configuration-as-code-secrets/jcasc.yaml"
+                                    "value": "/var/jenkins/configuration-as-code-secrets/jcasc.yaml",
+                                     
+                                },
+                                {
+                                     "name": "JENKINS_OPTS",
+                                     "value": f"--prefix=/{name}"
                                 }
                             ],
                             "resources": {
