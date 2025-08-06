@@ -1,0 +1,23 @@
+body.jenkins-theme {
+    background-color: #2f2f2f;
+    color: #f8f8f8;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.jenkins-card {
+    background-color: #3c3c3c;
+    border: 1px solid #4e4e4e;
+}
+
+.card-header h4 {
+    color: #fff;
+}
+
+.badge {
+    font-size: 0.9em;
+}
+
+a {
+    color: #62b4ff;
+}
+
